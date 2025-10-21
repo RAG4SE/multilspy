@@ -9,6 +9,7 @@ from typing import Tuple, Union
 import requests
 import shutil
 import uuid
+import time
 
 import platform
 import subprocess
@@ -129,12 +130,24 @@ class FileUtils:
         Downloads the file from the given URL to the given {target_path}
         """
         try:
+            logger.log(f"Downloading file: {url}", logging.INFO)
+
             response = requests.get(url, stream=True, timeout=60)
             if response.status_code != 200:
                 logger.log(f"Error downloading file '{url}': {response.status_code} {response.text}", logging.ERROR)
                 raise MultilspyException("Error downoading file.")
+
+            downloaded = 0
+            chunk_size = 8192
+
             with open(target_path, "wb") as f:
-                shutil.copyfileobj(response.raw, f)
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
+                        downloaded += len(chunk)
+
+            logger.log(f"Download completed: {url}", logging.INFO)
+
         except Exception as exc:
             logger.log(f"Error downloading file '{url}': {exc}", logging.ERROR)
             raise MultilspyException("Error downoading file.") from None
@@ -149,7 +162,11 @@ class FileUtils:
             tmp_file_name = str(PurePath(os.path.expanduser("~"), "multilspy_tmp", uuid.uuid4().hex))
             tmp_files.append(tmp_file_name)
             os.makedirs(os.path.dirname(tmp_file_name), exist_ok=True)
+
+            logger.log(f"Preparing archive from {url}", logging.INFO)
+
             FileUtils.download_file(logger, url, tmp_file_name)
+
             if archive_type in ["zip", "tar", "gztar", "bztar", "xztar"]:
                 assert os.path.isdir(target_path)
                 shutil.unpack_archive(tmp_file_name, target_path, archive_type)
@@ -166,6 +183,7 @@ class FileUtils:
             else:
                 logger.log(f"Unknown archive type '{archive_type}' for extraction", logging.ERROR)
                 raise MultilspyException(f"Unknown archive type '{archive_type}'")
+            logger.log(f"Archive prepared at: {target_path}", logging.INFO)
         except Exception as exc:
             logger.log(f"Error extracting archive '{tmp_file_name}' obtained from '{url}': {exc}", logging.ERROR)
             raise MultilspyException("Error extracting archive.") from exc
@@ -173,6 +191,7 @@ class FileUtils:
             for tmp_file_name in tmp_files:
                 if os.path.exists(tmp_file_name):
                     Path.unlink(Path(tmp_file_name))
+                    logger.log(f"Cleaned up temporary file: {os.path.basename(tmp_file_name)}", logging.DEBUG)
 
 class PlatformId(str, Enum):
     """
@@ -255,4 +274,3 @@ class PlatformUtils:
                 return DotnetVersion.VMONO
             except (FileNotFoundError, subprocess.CalledProcessError):
                 raise MultilspyException("dotnet or mono not found on the system")
-

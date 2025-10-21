@@ -84,7 +84,7 @@ class JediServer(LanguageServer):
                 self.completions_available.set()
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         self.server.on_request("client/registerCapability", do_nothing)
         self.server.on_notification("language/status", do_nothing)

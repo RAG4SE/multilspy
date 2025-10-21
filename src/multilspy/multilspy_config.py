@@ -21,6 +21,7 @@ class Language(str, Enum):
     RUBY = "ruby"
     DART = "dart"
     CPP = "cpp"
+    SOLIDITY = "solidity"
 
     def __str__(self) -> str:
         return self.value
@@ -40,7 +41,22 @@ class MultilspyConfig:
         Create a MultilspyConfig instance from a dictionary
         """
         import inspect
-        return cls(**{
-            k: v for k, v in env.items() 
-            if k in inspect.signature(cls).parameters
-        })
+
+        kwargs = {}
+        signature = inspect.signature(cls).parameters
+
+        for key in signature:
+            if key not in env:
+                continue
+            value = env[key]
+            if key == "code_language":
+                if isinstance(value, str):
+                    try:
+                        value = Language(value.lower())
+                    except ValueError as exc:
+                        raise ValueError(f"Unsupported language '{value}'") from exc
+                elif not isinstance(value, Language):
+                    raise TypeError(f"code_language must be a str or Language enum, received {type(value)}")
+            kwargs[key] = value
+
+        return cls(**kwargs)

@@ -1,0 +1,93 @@
+{
+    "_description": "The parameters sent by the client when initializing the Solidity Language Server (slang)",
+    "processId": "os.getpid()",
+    "clientInfo": {
+        "name": "multilspy",
+        "version": "1.0.0"
+    },
+    "locale": "en",
+    "rootPath": "$rootPath",
+    "rootUri": "$rootUri",
+    "capabilities": {
+        "textDocument": {
+            "synchronization": {
+                "dynamicRegistration": false,
+                "willSave": true,
+                "didSave": true
+            },
+            "completion": {
+                "dynamicRegistration": false,
+                "completionItem": {
+                    "snippetSupport": true,
+                    "commitCharactersSupport": true,
+                    "documentationFormat": ["markdown", "plaintext"],
+                    "deprecatedSupport": true,
+                    "preselectSupport": true
+                }
+            },
+            "hover": {
+                "dynamicRegistration": false,
+                "contentFormat": ["markdown", "plaintext"]
+            },
+            "definition": {
+                "dynamicRegistration": false
+            },
+            "references": {
+                "dynamicRegistration": false
+            },
+            "documentSymbol": {
+                "dynamicRegistration": false,
+                "hierarchicalDocumentSymbolSupport": true
+            },
+            "signatureHelp": {
+                "dynamicRegistration": false
+            },
+            "typeDefinition": {
+                "dynamicRegistration": false
+            },
+            "implementation": {
+                "dynamicRegistration": false
+            },
+            "codeAction": {
+                "dynamicRegistration": false,
+                "codeActionLiteralSupport": {
+                    "codeActionKind": {
+                        "valueSet": [
+                            "",
+                            "quickfix",
+                            "refactor",
+                            "refactor.extract",
+                            "refactor.inline",
+                            "refactor.rewrite",
+                            "source",
+                            "source.organizeImports"
+                        ]
+                    }
+                }
+            },
+            "rename": {
+                "dynamicRegistration": false,
+                "prepareSupport": false
+            }
+        },
+        "workspace": {
+            "workspaceFolders": true,
+            "symbol": {
+                "dynamicRegistration": false
+            }
+        }
+    },
+    "initializationOptions": {
+        "cacheDirectory": null,
+        "diagnostics": {
+            "enabled": true
+        }
+    },
+    "trace": "verbose",
+    "workspaceFolders": [
+        {
+            "uri": "$uri",
+            "name": "$name"
+        }
+    ]
+}

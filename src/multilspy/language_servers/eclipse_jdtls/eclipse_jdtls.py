@@ -164,12 +164,19 @@ class EclipseJDTLS(LanguageServer):
         )
 
         if not os.path.exists(gradle_path):
+            logger.log("Gradle runtime not found. Downloading gradle-7.3.3...", logging.INFO)
+            logger.log(
+                f"Download URL: {runtimeDependencies['gradle']['platform-agnostic']['url']}",
+                logging.INFO,
+            )
             FileUtils.download_and_extract_archive(
                 logger,
                 runtimeDependencies["gradle"]["platform-agnostic"]["url"],
                 str(PurePath(gradle_path).parent),
                 runtimeDependencies["gradle"]["platform-agnostic"]["archiveType"],
             )
+        else:
+            logger.log("Gradle runtime already present, skipping download.", logging.INFO)
 
         assert os.path.exists(gradle_path)
 
@@ -193,9 +200,15 @@ class EclipseJDTLS(LanguageServer):
                 os.path.exists(jdtls_readonly_config_path),
             ]
         ):
+            logger.log(
+                f"VSCode Java dependencies missing. Downloading from {dependency['url']}...",
+                logging.INFO,
+            )
             FileUtils.download_and_extract_archive(
                 logger, dependency["url"], vscode_java_path, dependency["archiveType"]
             )
+        else:
+            logger.log("VSCode Java package already prepared, skipping download.", logging.INFO)
 
         os.chmod(jre_path, stat.S_IEXEC)
 
@@ -220,9 +233,15 @@ class EclipseJDTLS(LanguageServer):
                 os.path.exists(intellisense_members_path),
             ]
         ):
+            logger.log(
+                f"Intellicode assets missing. Downloading from {dependency['url']}...",
+                logging.INFO,
+            )
             FileUtils.download_and_extract_archive(
                 logger, dependency["url"], intellicode_directory_path, dependency["archiveType"]
             )
+        else:
+            logger.log("Intellicode assets already present, skipping download.", logging.INFO)
 
         assert os.path.exists(intellicode_directory_path)
         assert os.path.exists(intellicode_jar_path)
@@ -351,7 +370,7 @@ class EclipseJDTLS(LanguageServer):
             return []
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         async def do_nothing(params):
             return

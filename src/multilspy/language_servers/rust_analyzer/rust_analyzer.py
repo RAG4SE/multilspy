@@ -65,6 +65,9 @@ class RustAnalyzer(LanguageServer):
         rustanalyzer_executable_path = os.path.join(rustanalyzer_ls_dir, dependency["binaryName"])
         if not os.path.exists(rustanalyzer_ls_dir):
             os.makedirs(rustanalyzer_ls_dir)
+        if not os.path.exists(rustanalyzer_executable_path):
+            logger.log("rust-analyzer binary not found. Downloading package...", logging.INFO)
+            logger.log(f"Download URL: {dependency['url']}", logging.INFO)
             if dependency["archiveType"] == "gz":
                 FileUtils.download_and_extract_archive(
                     logger, dependency["url"], rustanalyzer_executable_path, dependency["archiveType"]
@@ -73,6 +76,8 @@ class RustAnalyzer(LanguageServer):
                 FileUtils.download_and_extract_archive(
                     logger, dependency["url"], rustanalyzer_ls_dir, dependency["archiveType"]
                 )
+        else:
+            logger.log("rust-analyzer binary already present, skipping download.", logging.INFO)
         assert os.path.exists(rustanalyzer_executable_path)
         os.chmod(rustanalyzer_executable_path, stat.S_IEXEC)
 
@@ -143,7 +148,7 @@ class RustAnalyzer(LanguageServer):
                 self.server_ready.set()
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         self.server.on_request("client/registerCapability", register_capability_handler)
         self.server.on_notification("language/status", lang_status_handler)

@@ -179,9 +179,13 @@ class OmniSharp(LanguageServer):
         omnisharp_ls_dir = os.path.join(os.path.dirname(__file__), "static", "OmniSharp")
         if not os.path.exists(omnisharp_ls_dir):
             os.makedirs(omnisharp_ls_dir)
+            logger.log("OmniSharp runtime not found. Downloading package...", logging.INFO)
+            logger.log(f"Download URL: {runtime_dependencies['OmniSharp']['url']}", logging.INFO)
             FileUtils.download_and_extract_archive(
                 logger, runtime_dependencies["OmniSharp"]["url"], omnisharp_ls_dir, "zip"
             )
+        else:
+            logger.log("OmniSharp runtime already present, skipping download.", logging.INFO)
         omnisharp_executable_path = os.path.join(omnisharp_ls_dir, runtime_dependencies["OmniSharp"]["binaryName"])
         assert os.path.exists(omnisharp_executable_path)
         os.chmod(omnisharp_executable_path, stat.S_IEXEC)
@@ -189,9 +193,13 @@ class OmniSharp(LanguageServer):
         razor_omnisharp_ls_dir = os.path.join(os.path.dirname(__file__), "static", "RazorOmnisharp")
         if not os.path.exists(razor_omnisharp_ls_dir):
             os.makedirs(razor_omnisharp_ls_dir)
+            logger.log("Razor OmniSharp assets not found. Downloading package...", logging.INFO)
+            logger.log(f"Download URL: {runtime_dependencies['RazorOmnisharp']['url']}", logging.INFO)
             FileUtils.download_and_extract_archive(
                 logger, runtime_dependencies["RazorOmnisharp"]["url"], razor_omnisharp_ls_dir, "zip"
             )
+        else:
+            logger.log("Razor OmniSharp assets already present, skipping download.", logging.INFO)
         razor_omnisharp_dll_path = os.path.join(
             razor_omnisharp_ls_dir, runtime_dependencies["RazorOmnisharp"]["dll_path"]
         )
@@ -243,7 +251,7 @@ class OmniSharp(LanguageServer):
                 self.server_ready.set()
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         async def workspace_configuration_handler(params):
             # TODO: We do not know the appropriate way to handle this request. Should ideally contact the OmniSharp dev team

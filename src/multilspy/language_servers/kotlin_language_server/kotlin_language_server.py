@@ -87,13 +87,16 @@ class KotlinLanguageServer(LanguageServer):
         
         # Download and extract Java if not exists
         if not os.path.exists(java_path):
-            logger.log(f"Downloading Java for {platform_id.value}...", logging.INFO)
+            logger.log(f"Java runtime not found for {platform_id.value}. Downloading...", logging.INFO)
+            logger.log(f"Download URL: {java_dependency['url']}", logging.INFO)
             FileUtils.download_and_extract_archive(
                 logger, java_dependency["url"], java_dir, java_dependency["archiveType"]
             )
             # Make Java executable
             if not platform_id.value.startswith("win-"):
                 os.chmod(java_path, 0o755)
+        else:
+            logger.log("Java runtime already present, skipping download.", logging.INFO)
         
         assert os.path.exists(java_path), f"Java executable not found at {java_path}"
         
@@ -108,7 +111,8 @@ class KotlinLanguageServer(LanguageServer):
         
         # Download and extract Kotlin Language Server if script doesn't exist
         if not os.path.exists(kotlin_script):
-            logger.log("Downloading Kotlin Language Server...", logging.INFO)
+            logger.log("Kotlin Language Server not found. Downloading package...", logging.INFO)
+            logger.log(f"Download URL: {kotlin_dependency['url']}", logging.INFO)
             FileUtils.download_and_extract_archive(
                 logger, kotlin_dependency["url"], static_dir, kotlin_dependency["archiveType"]
             )
@@ -116,6 +120,8 @@ class KotlinLanguageServer(LanguageServer):
             # Make script executable on Unix platforms
             if os.path.exists(kotlin_script) and not platform_id.value.startswith("win-"):
                 os.chmod(kotlin_script, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        else:
+            logger.log("Kotlin Language Server already prepared, skipping download.", logging.INFO)
         
         # Use script file
         if os.path.exists(kotlin_script):
@@ -189,7 +195,7 @@ class KotlinLanguageServer(LanguageServer):
             return
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         self.server.on_request("client/registerCapability", do_nothing)
         self.server.on_notification("language/status", do_nothing)

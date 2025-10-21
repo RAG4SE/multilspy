@@ -1,0 +1,65 @@
+{
+    "_description": "Runtime dependencies for Solidity Language Server (VSCode Solidity extension)",
+    "runtimeDependencies": [
+        {
+            "platformId": "linux-x64",
+            "url": "https://github.com/juanfranblanco/vscode-solidity/archive/refs/heads/master.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "vscode-solidity-master",
+            "serverScript": "out/src/server.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run compile",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "vscode-solidity-main"
+            ]
+        },
+        {
+            "platformId": "osx-arm64",
+            "url": "https://github.com/juanfranblanco/vscode-solidity/archive/refs/heads/master.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "vscode-solidity-master",
+            "serverScript": "out/src/server.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run compile",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "vscode-solidity-main"
+            ]
+        },
+        {
+            "platformId": "osx-x64",
+            "url": "https://github.com/juanfranblanco/vscode-solidity/archive/refs/heads/master.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "vscode-solidity-master",
+            "serverScript": "out/src/server.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run compile",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "vscode-solidity-main"
+            ]
+        },
+        {
+            "platformId": "win-x64",
+            "url": "https://github.com/juanfranblanco/vscode-solidity/archive/refs/heads/master.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "vscode-solidity-master",
+            "serverScript": "out/src/server.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run compile",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "vscode-solidity-main"
+            ]
+        }
+    ]
+}

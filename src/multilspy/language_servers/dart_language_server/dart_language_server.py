@@ -50,9 +50,22 @@ class DartLanguageServer(LanguageServer):
 
         if not os.path.exists(dart_ls_dir):
             os.makedirs(dart_ls_dir)
+            logger.log("dart-language-server runtime not found. Downloading package...", logging.INFO)
+            logger.log(f"Download URL: {dependency['url']}", logging.INFO)
             FileUtils.download_and_extract_archive(
                 logger, dependency["url"], dart_ls_dir, dependency["archiveType"]
             )
+        elif not os.path.exists(dart_executable_path):
+            logger.log(
+                "dart-language-server directory exists but executable missing. Re-downloading package...",
+                logging.WARNING,
+            )
+            logger.log(f"Download URL: {dependency['url']}", logging.INFO)
+            FileUtils.download_and_extract_archive(
+                logger, dependency["url"], dart_ls_dir, dependency["archiveType"]
+            )
+        else:
+            logger.log("dart-language-server runtime already present, skipping download.", logging.INFO)
 
 
         assert os.path.exists(dart_executable_path)
@@ -105,7 +118,7 @@ class DartLanguageServer(LanguageServer):
             pass
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         self.server.on_request("client/registerCapability", do_nothing)
         self.server.on_notification("language/status", do_nothing)

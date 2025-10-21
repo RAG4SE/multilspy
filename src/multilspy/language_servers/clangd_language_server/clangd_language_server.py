@@ -45,7 +45,10 @@ class ClangdLanguageServer(LanguageServer):
         """
         Setup runtime dependencies for ClangdLanguageServer.
         """
+        logger.log("Setting up clangd runtime dependencies...", logging.INFO)
+
         platform_id = PlatformUtils.get_platform_id()
+        logger.log(f"Detected platform: {platform_id.value}", logging.INFO)
 
         with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies.json"), "r") as f:
             d = json.load(f)
@@ -69,17 +72,31 @@ class ClangdLanguageServer(LanguageServer):
 
         clangd_ls_dir = os.path.join(os.path.dirname(__file__), "static", "clangd")
         clangd_executable_path = os.path.join(clangd_ls_dir, "clangd_19.1.2", "bin", dependency["binaryName"])
-        if not os.path.exists(clangd_ls_dir):
-            os.makedirs(clangd_ls_dir)
-            if dependency["archiveType"] == "zip":
-                FileUtils.download_and_extract_archive(
-                    logger, dependency["url"], clangd_ls_dir, dependency["archiveType"]
-                )
+
+        if not os.path.exists(clangd_executable_path):
+            logger.log("clangd executable not found, checking if download is needed...", logging.INFO)
+            if not os.path.exists(clangd_ls_dir):
+                logger.log("clangd not installed. Downloading clangd language server...", logging.INFO)
+                os.makedirs(clangd_ls_dir)
+                logger.log(f"Downloading clangd version 19.1.2 for {platform_id.value}", logging.INFO)
+                logger.log(f"Download URL: {dependency['url']}", logging.INFO)
+                if dependency["archiveType"] == "zip":
+                    FileUtils.download_and_extract_archive(
+                        logger, dependency["url"], clangd_ls_dir, dependency["archiveType"]
+                    )
+                else:
+                    raise RuntimeError(f"Unsupported archive type: {dependency['archiveType']}")
+                if not os.path.exists(clangd_executable_path):
+                    raise FileNotFoundError(f"clangd executable was not found at {clangd_executable_path} after extraction")
+                logger.log("clangd download and setup completed successfully!", logging.INFO)
             else:
-                raise RuntimeError(f"Unsupported archive type: {dependency['archiveType']}")
-            if not os.path.exists(clangd_executable_path):
-                raise FileNotFoundError(f"clangd executable was not found at {clangd_executable_path} after extraction")
+                logger.log("clangd directory exists but executable missing", logging.WARNING)
+        else:
+            logger.log("clangd executable already exists, skipping download", logging.INFO)
+
+        logger.log("Setting executable permissions for clangd...", logging.INFO)
         os.chmod(clangd_executable_path, stat.S_IEXEC)
+        logger.log(f"clangd setup completed. Executable path: {clangd_executable_path}", logging.INFO)
 
         return clangd_executable_path
 
@@ -147,7 +164,7 @@ class ClangdLanguageServer(LanguageServer):
                 self.server_ready.set()
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         self.server.on_request("client/registerCapability", register_capability_handler)
         self.server.on_notification("language/status", lang_status_handler)

@@ -27,7 +27,7 @@ from .multilspy_config import MultilspyConfig, Language
 from .multilspy_exceptions import MultilspyException
 from .multilspy_utils import PathUtils, FileUtils, TextUtils
 from pathlib import PurePath
-from typing import AsyncIterator, Iterator, List, Dict, Optional, Union, Tuple
+from typing import AsyncIterator, Iterator, List, Dict, Optional, Union, Tuple, Any
 from .type_helpers import ensure_all_methods_implemented
 
 
@@ -73,55 +73,69 @@ class LanguageServer:
 
         :return LanguageServer: A language specific LanguageServer instance.
         """
-        if config.code_language == Language.PYTHON:
+        try:
+            language = (
+                config.code_language
+                if isinstance(config.code_language, Language)
+                else Language(str(config.code_language).lower())
+            )
+        except ValueError as exc:
+            logger.log(f"Language {config.code_language} is not supported", logging.ERROR)
+            raise MultilspyException(f"Language {config.code_language} is not supported") from exc
+
+        if language == Language.PYTHON:
             from multilspy.language_servers.jedi_language_server.jedi_server import (
                 JediServer,
             )
 
             return JediServer(config, logger, repository_root_path)
-        elif config.code_language == Language.JAVA:
+        elif language == Language.JAVA:
             from multilspy.language_servers.eclipse_jdtls.eclipse_jdtls import (
                 EclipseJDTLS,
             )
 
             return EclipseJDTLS(config, logger, repository_root_path)
-        elif config.code_language == Language.KOTLIN:
+        elif language == Language.KOTLIN:
             from multilspy.language_servers.kotlin_language_server.kotlin_language_server import (
                 KotlinLanguageServer,
             )
 
             return KotlinLanguageServer(config, logger, repository_root_path)
-        elif config.code_language == Language.RUST:
+        elif language == Language.RUST:
             from multilspy.language_servers.rust_analyzer.rust_analyzer import (
                 RustAnalyzer,
             )
 
             return RustAnalyzer(config, logger, repository_root_path)
-        elif config.code_language == Language.CSHARP:
+        elif language == Language.CSHARP:
             from multilspy.language_servers.omnisharp.omnisharp import OmniSharp
 
             return OmniSharp(config, logger, repository_root_path)
-        elif config.code_language in [Language.TYPESCRIPT, Language.JAVASCRIPT]:
+        elif language in [Language.TYPESCRIPT, Language.JAVASCRIPT]:
             from multilspy.language_servers.typescript_language_server.typescript_language_server import (
                 TypeScriptLanguageServer,
             )
             return TypeScriptLanguageServer(config, logger, repository_root_path)
-        elif config.code_language == Language.GO:
+        elif language == Language.GO:
             from multilspy.language_servers.gopls.gopls import Gopls
 
             return Gopls(config, logger, repository_root_path)
-        elif config.code_language == Language.RUBY:
+        elif language == Language.RUBY:
             from multilspy.language_servers.solargraph.solargraph import Solargraph
 
             return Solargraph(config, logger, repository_root_path)
-        elif config.code_language == Language.DART:
+        elif language == Language.DART:
             from multilspy.language_servers.dart_language_server.dart_language_server import DartLanguageServer
 
             return DartLanguageServer(config, logger, repository_root_path)
-        elif config.code_language == Language.CPP:
+        elif language == Language.CPP:
             from multilspy.language_servers.clangd_language_server.clangd_language_server import ClangdLanguageServer
 
             return ClangdLanguageServer(config, logger, repository_root_path)
+        elif language == Language.SOLIDITY:
+            from multilspy.language_servers.solidity_language_server.solidity_language_server import SolidityLanguageServer
+
+            return SolidityLanguageServer(config, logger, repository_root_path)
         else:
             logger.log(f"Language {config.code_language} is not supported", logging.ERROR)
             raise MultilspyException(f"Language {config.code_language} is not supported")
@@ -177,6 +191,42 @@ class LanguageServer:
 
         self.language_id = language_id
         self.open_file_buffers: Dict[str, LSPFileBuffer] = {}
+
+    def _log_window_message(self, payload: Any) -> None:
+        """
+        Format and log LSP window/logMessage payloads in a concise way.
+        """
+        message_type = None
+        message_text = ""
+
+        if isinstance(payload, dict):
+            message_type = payload.get("type")
+            message_text = str(payload.get("message", ""))
+        else:
+            message_text = str(payload)
+
+        lines = [line.strip() for line in message_text.splitlines() if line.strip()]
+        if not lines:
+            summary = "(no message)"
+            extra_lines = 0
+        else:
+            summary = lines[0]
+            extra_lines = len(lines) - 1
+            if extra_lines > 0:
+                summary += f" (+{extra_lines} more lines)"
+
+        type_labels = {1: "error", 2: "warning", 3: "info", 4: "log"}
+        label = type_labels.get(message_type, "log")
+
+        level_map = {
+            "error": logging.ERROR,
+            "warning": logging.WARNING,
+            "info": logging.INFO,
+            "log": logging.INFO,
+        }
+        log_level = level_map.get(label, logging.INFO)
+
+        self.logger.log(f"LSP log ({label}): {summary}", log_level)
 
     @asynccontextmanager
     async def start_server(self) -> AsyncIterator["LanguageServer"]:
@@ -758,6 +808,12 @@ class SyncLanguageServer:
         :param relative_file_path: The relative path of the file to open.
         """
         return self.language_server.get_open_file_text(relative_file_path)
+    
+    def _log_window_message(self, payload: Any) -> None:
+        """
+        Delegate LSP logging helper to the underlying async language server.
+        """
+        self.language_server._log_window_message(payload)
    
     @contextmanager
     def start_server(self) -> Iterator["SyncLanguageServer"]:

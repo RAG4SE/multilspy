@@ -112,7 +112,7 @@ class Gopls(LanguageServer):
             return
 
         async def window_log_message(msg):
-            self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
+            self._log_window_message(msg)
 
         async def do_nothing(params):
             return
