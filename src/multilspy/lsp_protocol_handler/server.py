@@ -315,22 +315,26 @@ class LanguageServerHandler:
         parent = None
         try:
             parent = psutil.Process(process.pid)
-        except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+        except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, Exception):
             pass
     
         # If we have the parent process and it's running, signal the entire tree
         if parent and parent.is_running():
             # Signal children first
-            for child in parent.children(recursive=True):
+            try:
+                children = parent.children(recursive=True)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, Exception):
+                children = []
+            for child in children:
                 try:
                     getattr(child, signal_method)()
-                except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+                except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, Exception):
                     pass
         
             # Then signal the parent
             try:
                 getattr(parent, signal_method)()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, PermissionError, Exception):
                 pass
         else:
             # Fall back to direct process signaling

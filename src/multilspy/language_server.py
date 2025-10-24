@@ -191,11 +191,22 @@ class LanguageServer:
 
         self.language_id = language_id
         self.open_file_buffers: Dict[str, LSPFileBuffer] = {}
+        self._registered_capabilities: Dict[str, str] = {}
+
+        self.server.on_request("client/registerCapability", self._handle_register_capability)
+        self.server.on_request("client/unregisterCapability", self._handle_unregister_capability)
 
     def _log_window_message(self, payload: Any) -> None:
         """
         Format and log LSP window/logMessage payloads in a concise way.
         """
+        logger_obj = getattr(self, "logger", None)
+        if logger_obj is None:
+            return
+
+        if not getattr(logger_obj, "verbose", True):
+            return
+
         message_type = None
         message_text = ""
 
@@ -228,6 +239,65 @@ class LanguageServer:
 
         self.logger.log(f"LSP log ({label}): {summary}", log_level)
 
+    async def _handle_register_capability(self, params: Any) -> None:
+        """
+        Handle dynamic capability registrations from the server.
+        """
+        if not isinstance(params, dict):
+            return None
+
+        registrations = params.get("registrations", [])
+        if not isinstance(registrations, list):
+            return None
+
+        for registration in registrations:
+            if not isinstance(registration, dict):
+                continue
+            capability_id = registration.get("id")
+            method = registration.get("method")
+            if isinstance(capability_id, str) and isinstance(method, str):
+                self._registered_capabilities[capability_id] = method
+                if getattr(self.logger, "verbose", False):
+                    self.logger.log(
+                        f"Registered server capability '{method}' ({capability_id})",
+                        logging.DEBUG,
+                    )
+
+        return None
+
+    async def _handle_unregister_capability(self, params: Any) -> None:
+        """
+        Handle dynamic capability unregistrations from the server.
+        """
+        if not isinstance(params, dict):
+            return None
+
+        unregistrations = params.get("unregisterations") or params.get("registrations") or params.get("ids")
+        # Servers should use "unregisterations", but handle a few variations defensively.
+        if isinstance(unregistrations, dict):
+            unregistrations = [unregistrations]
+
+        if not isinstance(unregistrations, list):
+            return None
+
+        for entry in unregistrations:
+            capability_id = None
+            if isinstance(entry, dict):
+                capability_id = entry.get("id")
+            elif isinstance(entry, str):
+                capability_id = entry
+
+            if isinstance(capability_id, str):
+                method = self._registered_capabilities.pop(capability_id, None)
+                if getattr(self.logger, "verbose", False):
+                    detail = f"'{method}' " if method else ""
+                    self.logger.log(
+                        f"Unregistered server capability {detail}({capability_id})",
+                        logging.DEBUG,
+                    )
+
+        return None
+
     @asynccontextmanager
     async def start_server(self) -> AsyncIterator["LanguageServer"]:
         """
@@ -244,8 +314,19 @@ class LanguageServer:
         ```
         """
         self.server_started = True
-        yield self
-        self.server_started = False
+        try:
+            yield self
+        finally:
+            for uri in list(self.open_file_buffers.keys()):
+                self.server.notify.did_close_text_document(
+                    {
+                        LSPConstants.TEXT_DOCUMENT: {
+                            LSPConstants.URI: uri,
+                        }
+                    }
+                )
+            self.open_file_buffers.clear()
+            self.server_started = False
 
     # TODO: Add support for more LSP features
 
@@ -266,18 +347,21 @@ class LanguageServer:
         absolute_file_path = str(PurePath(self.repository_root_path, relative_file_path))
         uri = pathlib.Path(absolute_file_path).as_uri()
 
-        if uri in self.open_file_buffers:
-            assert self.open_file_buffers[uri].uri == uri
-            assert self.open_file_buffers[uri].ref_count >= 1
-
-            self.open_file_buffers[uri].ref_count += 1
-            yield
-            self.open_file_buffers[uri].ref_count -= 1
+        buffer = self.open_file_buffers.get(uri)
+        if buffer is not None:
+            assert buffer.uri == uri
+            assert buffer.ref_count >= 0
+            buffer.ref_count += 1
+            try:
+                yield
+            finally:
+                buffer.ref_count -= 1
         else:
             contents = FileUtils.read_file(self.logger, absolute_file_path)
 
             version = 0
-            self.open_file_buffers[uri] = LSPFileBuffer(uri, contents, version, self.language_id, 1)
+            buffer = LSPFileBuffer(uri, contents, version, self.language_id, 1)
+            self.open_file_buffers[uri] = buffer
 
             self.server.notify.did_open_text_document(
                 {
@@ -289,18 +373,10 @@ class LanguageServer:
                     }
                 }
             )
-            yield
-            self.open_file_buffers[uri].ref_count -= 1
-
-        if self.open_file_buffers[uri].ref_count == 0:
-            self.server.notify.did_close_text_document(
-                {
-                    LSPConstants.TEXT_DOCUMENT: {
-                        LSPConstants.URI: uri,
-                    }
-                }
-            )
-            del self.open_file_buffers[uri]
+            try:
+                yield
+            finally:
+                buffer.ref_count -= 1
 
     def insert_text_at_position(
         self, relative_file_path: str, line: int, column: int, text_to_be_inserted: str
@@ -747,7 +823,7 @@ class SyncLanguageServer:
         self.language_server = language_server
         self.loop = None
         self.loop_thread = None
-        self.timeout = timeout
+        self.timeout = 30 if timeout is None else timeout
 
     @classmethod
     def create(
@@ -808,6 +884,24 @@ class SyncLanguageServer:
         :param relative_file_path: The relative path of the file to open.
         """
         return self.language_server.get_open_file_text(relative_file_path)
+
+    def _handle_register_capability(self, params: Any) -> None:
+        """
+        Sync wrapper to satisfy interface parity with LanguageServer.
+        """
+        coroutine = self.language_server._handle_register_capability(params)
+        if self.loop:
+            return asyncio.run_coroutine_threadsafe(coroutine, self.loop).result(timeout=self.timeout)
+        return asyncio.run(coroutine)
+
+    def _handle_unregister_capability(self, params: Any) -> None:
+        """
+        Sync wrapper to satisfy interface parity with LanguageServer.
+        """
+        coroutine = self.language_server._handle_unregister_capability(params)
+        if self.loop:
+            return asyncio.run_coroutine_threadsafe(coroutine, self.loop).result(timeout=self.timeout)
+        return asyncio.run(coroutine)
     
     def _log_window_message(self, payload: Any) -> None:
         """

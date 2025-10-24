@@ -24,7 +24,8 @@ class MultilspyLogger:
     Logger class
     """
 
-    def __init__(self) -> None:
+    def __init__(self, verbose: bool = False) -> None:
+        self.verbose = verbose
         self.logger = logging.getLogger("multilspy")
         self.logger.setLevel(logging.INFO)
         if not self.logger.handlers:
@@ -38,6 +39,10 @@ class MultilspyLogger:
         """
         Log the debug and santized messages using the logger
         """
+
+        # Skip logging if verbose is False and this is not an error
+        if not self.verbose:
+            return
 
         debug_message = debug_message.replace("'", '"').replace("\n", " ")
         sanitized_error_message = sanitized_error_message.replace("'", '"').replace("\n", " ")

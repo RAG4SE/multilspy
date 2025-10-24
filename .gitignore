@@ -412,3 +412,5 @@ venv/
 
 # Downloaded LSPs
 *static/*
+
+tmp_home
