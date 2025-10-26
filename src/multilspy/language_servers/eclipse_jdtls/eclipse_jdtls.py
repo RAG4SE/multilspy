@@ -321,6 +321,15 @@ class EclipseJDTLS(LanguageServer):
             "home"
         ] = self.runtime_dependency_paths.jre_path
 
+        # Enable offline mode to avoid dependency downloads
+        d["initializationOptions"]["settings"]["java"]["import"]["maven"]["offline"]["enabled"] = True
+        d["initializationOptions"]["settings"]["java"]["import"]["gradle"]["offline"]["enabled"] = True
+
+        # Disable source downloads to speed up initialization
+        d["initializationOptions"]["settings"]["java"]["maven"]["downloadSources"] = False
+        d["initializationOptions"]["settings"]["java"]["eclipse"]["downloadSources"] = False
+        d["initializationOptions"]["settings"]["java"]["maven"]["updateSnapshots"] = False
+
         return d
 
     @asynccontextmanager

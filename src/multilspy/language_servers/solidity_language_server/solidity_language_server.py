@@ -32,6 +32,9 @@ class SolidityLanguageServer(LanguageServer):
         Use LanguageServer.create() instead.
         """
 
+        # Store repository root for project setup
+        self.repository_root_path = repository_root_path
+
         executable_path = self.setup_runtime_dependencies(logger)
 
         super().__init__(
@@ -59,7 +62,10 @@ class SolidityLanguageServer(LanguageServer):
         if npm_path is None:
             raise RuntimeError("npm is required to prepare the Solidity language server. Please install npm and try again.")
 
-        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies.json"), "r") as f:
+        # To switch between Solidity LSP implementations, change the filename here:
+        # - "runtime_dependencies.json" for VSCode Solidity (juanfranblanco/vscode-solidity)
+        # - "runtime_dependencies_nomic.json" for Nomic Foundation (@nomicfoundation/solidity-language-server)
+        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies_nomic.json"), "r") as f:
             d = json.load(f)
             del d["_description"]
 
@@ -171,15 +177,114 @@ class SolidityLanguageServer(LanguageServer):
 
         logger.log(f"Solidity language server ready. Entry point: {server_script_path}", logging.INFO)
 
+        # Setup project dependencies for Nomic Foundation LSP
+        self._setup_project_dependencies(logger)
+
         quoted_node_path = f"\"{node_path}\""
         quoted_server_path = f"\"{server_script_path}\""
         return f"{quoted_node_path} {quoted_server_path} --stdio"
+
+    def _setup_project_dependencies(self, logger: MultilspyLogger) -> None:
+        """
+        Setup project dependencies (Hardhat) in the repository for Nomic Foundation LSP
+        """
+        logger.log("Setting up project dependencies for Nomic Foundation LSP...", logging.INFO)
+
+        npm_path = shutil.which("npm")
+        if npm_path is None:
+            logger.log("npm not found, skipping project setup", logging.WARNING)
+            return
+
+        # Check if package.json exists in the repository
+        package_json_path = os.path.join(self.repository_root_path, "package.json")
+        if not os.path.exists(package_json_path):
+            logger.log("No package.json found, creating one with Hardhat dependency...", logging.INFO)
+            # Create a minimal package.json
+            package_json_content = {
+                "name": "solidity-project",
+                "version": "1.0.0",
+                "description": "Solidity project for multilspy",
+                "devDependencies": {
+                    "hardhat": "^2.17.0",
+                    "@nomicfoundation/hardhat-toolbox": "^3.0.0"
+                },
+                "scripts": {
+                    "compile": "hardhat compile"
+                }
+            }
+
+            with open(package_json_path, "w") as f:
+                json.dump(package_json_content, f, indent=2)
+            logger.log("Created package.json with Hardhat dependency", logging.INFO)
+        else:
+            # Check if hardhat is already in dependencies
+            try:
+                with open(package_json_path, "r") as f:
+                    package_json = json.load(f)
+
+                dev_deps = package_json.get("devDependencies", {})
+                deps = package_json.get("dependencies", {})
+
+                if "hardhat" not in dev_deps and "hardhat" not in deps:
+                    logger.log("Adding Hardhat to existing package.json...", logging.INFO)
+                    if "devDependencies" not in package_json:
+                        package_json["devDependencies"] = {}
+                    package_json["devDependencies"]["hardhat"] = "^2.17.0"
+                    package_json["devDependencies"]["@nomicfoundation/hardhat-toolbox"] = "^3.0.0"
+
+                    with open(package_json_path, "w") as f:
+                        json.dump(package_json, f, indent=2)
+                    logger.log("Added Hardhat to package.json", logging.INFO)
+                else:
+                    logger.log("Hardhat already found in package.json", logging.INFO)
+
+            except Exception as exc:
+                logger.log(f"Error reading package.json: {exc}", logging.WARNING)
+                return
+
+        # Check if node_modules exists and has hardhat
+        node_modules_path = os.path.join(self.repository_root_path, "node_modules")
+        hardhat_path = os.path.join(node_modules_path, "hardhat")
+
+        if not os.path.exists(hardhat_path):
+            logger.log("Installing project dependencies (this may take a moment)...", logging.INFO)
+            try:
+                def run_npm_install(command, cwd: str):
+                    import subprocess
+                    logger.log(f"Running: {' '.join(command) if isinstance(command, list) else command}", logging.INFO)
+                    result = subprocess.run(command, cwd=cwd, shell=isinstance(command, str), capture_output=True, text=True)
+                    if result.returncode != 0:
+                        raise RuntimeError(f"Command failed: {result.stderr}")
+                    return result.stdout
+
+                run_npm_install([npm_path, "install"], self.repository_root_path)
+                logger.log("Project dependencies installed successfully", logging.INFO)
+            except Exception as exc:
+                logger.log(f"Failed to install project dependencies: {exc}", logging.WARNING)
+        else:
+            logger.log("Project dependencies already installed", logging.INFO)
+
+        # Create basic hardhat.config.js if it doesn't exist
+        hardhat_config_path = os.path.join(self.repository_root_path, "hardhat.config.js")
+        if not os.path.exists(hardhat_config_path):
+            logger.log("Creating basic hardhat.config.js...", logging.INFO)
+            hardhat_config_content = '''require("@nomicfoundation/hardhat-toolbox");
+
+/** @type import('hardhat/config').HardhatUserConfig */
+module.exports = {
+  solidity: "0.8.19",
+};
+'''
+            with open(hardhat_config_path, "w") as f:
+                f.write(hardhat_config_content)
+            logger.log("Created basic hardhat.config.js", logging.INFO)
 
     def _get_initialize_params(self, repository_absolute_path: str):
         """
         Returns the initialize params for the Solidity Language Server.
         """
-        with open(os.path.join(os.path.dirname(__file__), "initialize_params.json"), "r") as f:
+        # Use corresponding initialize params file for the selected LSP
+        with open(os.path.join(os.path.dirname(__file__), "initialize_params_nomic.json"), "r") as f:
             d = json.load(f)
 
         del d["_description"]

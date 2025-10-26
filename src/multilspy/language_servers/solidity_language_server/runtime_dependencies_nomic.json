@@ -1,0 +1,65 @@
+{
+    "_description": "Runtime dependencies for Nomic Foundation Solidity Language Server",
+    "runtimeDependencies": [
+        {
+            "platformId": "linux-x64",
+            "url": "https://github.com/NomicFoundation/hardhat-vscode/archive/refs/heads/main.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "hardhat-vscode-main",
+            "serverScript": "server/out/index.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run build",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "hardhat-vscode-main"
+            ]
+        },
+        {
+            "platformId": "osx-arm64",
+            "url": "https://github.com/NomicFoundation/hardhat-vscode/archive/refs/heads/main.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "hardhat-vscode-main",
+            "serverScript": "server/out/index.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run build",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "hardhat-vscode-main"
+            ]
+        },
+        {
+            "platformId": "osx-x64",
+            "url": "https://github.com/NomicFoundation/hardhat-vscode/archive/refs/heads/main.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "hardhat-vscode-main",
+            "serverScript": "server/out/index.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run build",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "hardhat-vscode-main"
+            ]
+        },
+        {
+            "platformId": "win-x64",
+            "url": "https://github.com/NomicFoundation/hardhat-vscode/archive/refs/heads/main.zip",
+            "archiveType": "zip",
+            "relative_extraction_path": "hardhat-vscode-main",
+            "serverScript": "server/out/index.js",
+            "npmInstallDirs": [
+                "."
+            ],
+            "compileCommand": "npm run build",
+            "compileWorkingDirectory": ".",
+            "legacyRelativeExtractionPaths": [
+                "hardhat-vscode-main"
+            ]
+        }
+    ]
+}

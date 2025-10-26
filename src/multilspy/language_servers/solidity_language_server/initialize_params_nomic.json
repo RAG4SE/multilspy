@@ -1,9 +1,9 @@
 {
-    "_description": "The parameters sent by the client when initializing the Solidity Language Server (slang)",
+    "_description": "The parameters sent by the client when initializing the Nomic Foundation Solidity Language Server",
     "processId": "os.getpid()",
     "clientInfo": {
-        "name": "Visual Studio Code",
-        "version": "1.85.0"
+        "name": "multilspy",
+        "version": "1.0.0"
     },
     "locale": "en",
     "rootPath": "$rootPath",
@@ -78,16 +78,15 @@
         }
     },
     "initializationOptions": {
-        "cacheDirectory": null,
-        "diagnostics": {
+        "hardhat": {
             "enabled": true
         },
-        "settings": {
-            "solidity": {
-                "defaultCompiler": "embedded",
-                "compileUsingRemoteVersion": "latest"
-            }
-        }
+        "foundry": {
+            "enabled": false
+        },
+        "remappings": [],
+        "includePaths": [],
+        "excludePaths": []
     },
     "trace": "verbose",
     "workspaceFolders": [

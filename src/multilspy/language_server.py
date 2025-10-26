@@ -528,7 +528,10 @@ class LanguageServer:
             )
 
         ret: List[multilspy_types.Location] = []
-        if isinstance(response, list):
+        if response is None:
+            # No definition found, return empty list
+            pass
+        elif isinstance(response, list):
             # response is either of type Location[] or LocationLink[]
             for item in response:
                 assert isinstance(item, dict)
