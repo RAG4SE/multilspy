@@ -12,12 +12,13 @@ repository_root = '/Users/mac/repo/deepwiki-cli/bench/solidity-interface-demo'
 lsp = SyncLanguageServer.create(config, logger, str(repository_root))
 with lsp.start_server():
     # Test Solidity language server with a sample contract
-    result = lsp.request_definition(
-        "contracts/DataManager.sol",  # Filename of location where request is being made
-        107,  # line number of symbol for which request is being made
-        58  # column number of symbol for which request is being made
+    results = lsp.request_references(
+        "contracts/IDataStorage.sol",  # Filename of location where request is being made
+        14,  # line number of symbol for which request is being made
+        13  # column number of symbol for which request is being made
     )
-    print(result)
+    for result in results:
+        print(result) 
     # You can also test other requests:
     # result = lsp.request_definition("contracts/SampleContract.sol", 10, 15)
     # result = lsp.request_completion("contracts/SampleContract.sol", 20, 10)

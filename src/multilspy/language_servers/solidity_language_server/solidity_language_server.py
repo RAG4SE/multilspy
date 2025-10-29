@@ -65,7 +65,7 @@ class SolidityLanguageServer(LanguageServer):
         # To switch between Solidity LSP implementations, change the filename here:
         # - "runtime_dependencies.json" for VSCode Solidity (juanfranblanco/vscode-solidity)
         # - "runtime_dependencies_nomic.json" for Nomic Foundation (@nomicfoundation/solidity-language-server)
-        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies_nomic.json"), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies.json"), "r") as f:
             d = json.load(f)
             del d["_description"]
 
@@ -178,7 +178,7 @@ class SolidityLanguageServer(LanguageServer):
         logger.log(f"Solidity language server ready. Entry point: {server_script_path}", logging.INFO)
 
         # Setup project dependencies for Nomic Foundation LSP
-        self._setup_project_dependencies(logger)
+        # self._setup_project_dependencies(logger)
 
         quoted_node_path = f"\"{node_path}\""
         quoted_server_path = f"\"{server_script_path}\""
@@ -284,7 +284,7 @@ module.exports = {
         Returns the initialize params for the Solidity Language Server.
         """
         # Use corresponding initialize params file for the selected LSP
-        with open(os.path.join(os.path.dirname(__file__), "initialize_params_nomic.json"), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), "initialize_params.json"), "r") as f:
             d = json.load(f)
 
         del d["_description"]

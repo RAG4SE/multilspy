@@ -8,22 +8,18 @@ from multilspy.multilspy_logger import MultilspyLogger
 def main() -> None:
     config = MultilspyConfig.from_dict({"code_language": "java"})
     logger = MultilspyLogger(True)
-    repository_root = "/Users/mac/repo/icardcenter"
+    repository_root = "/Users/mac/repo/deepwiki-cli/bench/java-polymorphism-execute/"
     # repository_root = "/Users/mac/repo/deepwiki-cli/bench/java-polymorphism-execute"
 
     lsp = SyncLanguageServer.create(config, logger, str(repository_root))
     with lsp.start_server():
-        result = lsp.request_definition(
-            '/Users/mac/repo/icardcenter/app/biz/service-impl/src/main/java/com/ipay/icardcenter/service/template/ServiceExecuteTemplate.java',
-            63,
-            21,
+        results = lsp.request_implementations(
+            'src/main/java/com/example/polymorphism/AbstractExecutor.java',
+            13,
+            18,
         )
-        # result = lsp.request_definition(
-        #     'src/main/java/com/example/polymorphism/Main.java',
-        #     144,
-        #     12,
-        # )
-        print(result)
+        for result in results:
+            print(result)
 
 
 if __name__ == "__main__":

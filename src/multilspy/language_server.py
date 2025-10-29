@@ -756,7 +756,87 @@ class LanguageServer:
                 ret.append(multilspy_types.UnifiedSymbolInformation(**item))
 
         return ret, l_tree
-    
+
+    async def request_implementations(
+        self, relative_file_path: str, line: int, column: int
+    ) -> List[multilspy_types.Location]:
+        """
+        Raise a [textDocument/implementation](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_implementation) request to the Language Server
+        to find implementations of the interface or abstract class at the given line and column in the given file. Wait for the response and return the result.
+
+        :param relative_file_path: The relative path of the file that has the symbol for which implementations should be looked up
+        :param line: The line number of the symbol
+        :param column: The column number of the symbol
+
+        :return List[multilspy_types.Location]: A list of locations where the symbol is implemented
+        """
+
+        if not self.server_started:
+            self.logger.log(
+                "request_implementations called before Language Server started",
+                logging.ERROR,
+            )
+            raise MultilspyException("Language Server not started")
+
+        with self.open_file(relative_file_path):
+            # sending request to the language server and waiting for response
+            response = await self.server.send.implementation(
+                {
+                    LSPConstants.TEXT_DOCUMENT: {
+                        LSPConstants.URI: pathlib.Path(
+                            str(PurePath(self.repository_root_path, relative_file_path))
+                        ).as_uri()
+                    },
+                    LSPConstants.POSITION: {
+                        LSPConstants.LINE: line,
+                        LSPConstants.CHARACTER: column,
+                    },
+                }
+            )
+
+        ret: List[multilspy_types.Location] = []
+        if response is None:
+            # No implementation found, return empty list
+            pass
+        elif isinstance(response, list):
+            # response is either of type Location[] or LocationLink[]
+            for item in response:
+                assert isinstance(item, dict)
+                if LSPConstants.URI in item and LSPConstants.RANGE in item:
+                    new_item: multilspy_types.Location = {}
+                    new_item.update(item)
+                    new_item["absolutePath"] = PathUtils.uri_to_path(new_item["uri"])
+                    new_item["relativePath"] = PathUtils.get_relative_path(new_item["absolutePath"], self.repository_root_path)
+                    ret.append(multilspy_types.Location(new_item))
+                elif (
+                    LSPConstants.ORIGIN_SELECTION_RANGE in item
+                    and LSPConstants.TARGET_URI in item
+                    and LSPConstants.TARGET_RANGE in item
+                    and LSPConstants.TARGET_SELECTION_RANGE in item
+                ):
+                    new_item: multilspy_types.Location = {}
+                    new_item["uri"] = item[LSPConstants.TARGET_URI]
+                    new_item["absolutePath"] = PathUtils.uri_to_path(new_item["uri"])
+                    new_item["relativePath"] = PathUtils.get_relative_path(new_item["absolutePath"], self.repository_root_path)
+                    new_item["range"] = item[LSPConstants.TARGET_SELECTION_RANGE]
+                    ret.append(multilspy_types.Location(**new_item))
+                else:
+                    assert False, f"Unexpected response from Language Server: {item}"
+        elif isinstance(response, dict):
+            # response is of type Location
+            assert LSPConstants.URI in response
+            assert LSPConstants.RANGE in response
+
+            new_item: multilspy_types.Location = {}
+            new_item.update(response)
+            new_item["absolutePath"] = PathUtils.uri_to_path(new_item["uri"])
+            new_item["relativePath"] = PathUtils.get_relative_path(new_item["absolutePath"], self.repository_root_path)
+            ret.append(multilspy_types.Location(**new_item))
+        else:
+            assert False, f"Unexpected response from Language Server: {response}"
+
+        return ret
+
     async def request_hover(self, relative_file_path: str, line: int, column: int) -> Union[multilspy_types.Hover, None]:
         """
         Raise a [textDocument/hover](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover) request to the Language Server
@@ -942,6 +1022,22 @@ class SyncLanguageServer:
         """
         result = asyncio.run_coroutine_threadsafe(
             self.language_server.request_definition(file_path, line, column), self.loop
+        ).result(timeout=self.timeout)
+        return result
+
+    def request_implementations(self, file_path: str, line: int, column: int) -> List[multilspy_types.Location]:
+        """
+        Raise a [textDocument/implementation](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_implementation) request to the Language Server
+        to find implementations of the interface or abstract class at the given line and column in the given file. Wait for the response and return the result.
+
+        :param relative_file_path: The relative path of the file that has the symbol for which implementations should be looked up
+        :param line: The line number of the symbol
+        :param column: The column number of the symbol
+
+        :return List[multilspy_types.Location]: A list of locations where the symbol is implemented
+        """
+        result = asyncio.run_coroutine_threadsafe(
+            self.language_server.request_implementations(file_path, line, column), self.loop
         ).result(timeout=self.timeout)
         return result
 
