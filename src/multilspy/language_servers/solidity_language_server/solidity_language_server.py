@@ -65,7 +65,7 @@ class SolidityLanguageServer(LanguageServer):
         # To switch between Solidity LSP implementations, change the filename here:
         # - "runtime_dependencies.json" for VSCode Solidity (juanfranblanco/vscode-solidity)
         # - "runtime_dependencies_nomic.json" for Nomic Foundation (@nomicfoundation/solidity-language-server)
-        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies.json"), "r") as f:
+        with open(os.path.join(os.path.dirname(__file__), "runtime_dependencies_haoyang.json"), "r") as f:
             d = json.load(f)
             del d["_description"]
 
